@@ -53,7 +53,19 @@ def mirror(name):
 
 @app.route("/shows", methods=['GET'])
 def get_all_shows():
-    return create_response({"shows": db.get('shows')})
+    minEpisodes =  request.args.get('minEpisodes')
+    if not minEpisodes:
+        return create_response({"shows": db.get('shows')})
+    else:
+        shows = db.get('shows')
+        filtered_shows = []
+        for show in shows:
+            if show["episodes_seen"] >= int(minEpisodes):
+                filtered_shows.append(show)
+        
+        if len(filtered_shows) == 0:
+            return create_response(message="No shows fit the requirement")
+        return create_response({"shows": filtered_shows}, message="Shows found")
 
 @app.route("/shows/<id>", methods=['DELETE'])
 def delete_show(id):
@@ -64,7 +76,54 @@ def delete_show(id):
 
 
 # TODO: Implement the rest of the API here!
+@app.route("/shows/<id>", methods=['GET'])
+def get_show(id):
+    if db.getById('shows', int(id)) is None:
+        return create_response(status=404, message="No show with this id exists")
+    return create_response(db.getById('shows', int(id)))
 
+@app.route("/shows", methods=['POST'])
+def create_show():
+    name = request.json.get("name")
+    episodes_seen = request.json.get("episodes_seen")
+    if not name or not episodes_seen:
+        return create_response(status=422, message="Please fill in all the fields")
+    result = {
+        "name": name,
+        "episodes_seen": episodes_seen
+    }
+    db.create('shows', result)
+    return create_response(result, status=201, message="Show created")
+
+@app.route("/shows/<id>", methods=['PUT'])
+def update_show(id):
+    show = db.getById('shows', int(id))
+    if show is None:
+        return create_response(status=404, message="No show with this id exists")
+    else:
+        name = request.json.get("name")
+        episodes_seen = request.json.get("episodes_seen")
+        if not name and not episodes_seen:
+            return create_response(show, message="No inputs for update")
+        elif not name:
+            result = {
+                "episodes_seen": episodes_seen
+            }
+            db.updateById('shows', int(id), result)
+            return create_response(show, message="Show updated")
+        elif not episodes_seen:
+            result = {
+                "name": name
+            }
+            db.updateById('shows', int(id), result)
+            return create_response(show, message="Show updated")
+        else:
+            result = {
+                "name": name,
+                "episodes_seen": episodes_seen
+            }
+            db.updateById('shows', int(id), result)
+            return create_response(show, message="Show updated")
 """
 ~~~~~~~~~~~~ END API ~~~~~~~~~~~~
 """
